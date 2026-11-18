@@ -96,8 +96,12 @@ def render():
         inst = bundle.institutions if level == "all" else bundle.institutions[bundle.institutions["level"] == level]
         if {"lat", "lon"}.issubset(inst.columns) and inst[["lat", "lon"]].notna().all(axis=1).any():
             samp = inst.dropna(subset=["lat", "lon"]).sample(min(len(inst), 3000), random_state=0)
-            fig = go.Figure(go.Scattermap(lat=samp["lat"], lon=samp["lon"], mode="markers", marker=dict(size=5, color=PALETTE["terracotta"], opacity=0.55),
-                                          text=samp["governorate"].map(ui.gname), hovertemplate="%{text}<extra></extra>"))
+            # Fond de carte : contours des gouvernorats (présentation uniquement, aucune donnée ajoutée)
+            outline = go.Choroplethmap(geojson=data_store.geojson(), locations=gov["governorate"], z=[0] * len(gov),
+                                       featureidkey="properties.shapeName", colorscale=[[0, "#EAF2FA"], [1, "#EAF2FA"]], showscale=False,
+                                       marker_line_width=0.9, marker_line_color="#9DB6CE", hoverinfo="skip")
+            fig = go.Figure([outline, go.Scattermap(lat=samp["lat"], lon=samp["lon"], mode="markers", marker=dict(size=5, color=PALETTE["terracotta"], opacity=0.55),
+                                          text=samp["governorate"].map(ui.gname), hovertemplate="%{text}<extra></extra>")])
             fig.update_layout(map=dict(style="white-bg", center=dict(lat=33.9, lon=9.6), zoom=5.1), height=520, margin=dict(l=0, r=0, t=10, b=0))
             ui.provenance_fig(fig)
             st.plotly_chart(fig, width="stretch")
