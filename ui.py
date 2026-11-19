@@ -168,7 +168,7 @@ hr {{ border-color: var(--tedt-border); }}
 }}
 .tedt-brand-left {{ display: flex; align-items: center; gap: 18px; min-width: 0; }}
 .tedt-logo {{ display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }}
-.tedt-logo-mark {{ width: 62px; height: 54px; flex: 0 0 auto; }}
+.tedt-logo-img {{ height: 64px; width: auto; max-width: 100%; object-fit: contain; mix-blend-mode: multiply; flex: 0 1 auto; }}
 .tedt-wordmark {{ color: var(--tedt-navy); font-family: 'Poppins', sans-serif; font-size: 2.3rem; font-weight: 800; line-height: 1; letter-spacing: -.06em; direction: ltr; }}
 .tedt-wordmark span {{ color: var(--tedt-teal); }}
 .tedt-brand-sep {{ width: 2px; align-self: stretch; min-height: 44px; background: var(--tedt-blue); opacity: .55; border-radius: 2px; }}
@@ -286,7 +286,7 @@ hr {{ border-color: var(--tedt-border); }}
 @media (max-width: 800px) {{
   :root {{ --tedt-gutter: .75rem; }}
   .tedt-brand-header {{ padding: 8px .9rem; gap: 10px; min-height: 64px; }}
-  .tedt-logo-mark {{ width: 40px; height: 36px; }}
+  .tedt-logo-img {{ height: 38px; }}
   .tedt-wordmark {{ font-size: 1.5rem; }}
   .tedt-brand-sep, .tedt-brand-name {{ display: none; }}
   .tedt-ministry-logo {{ width: 44vw; max-height: 52px; }}
@@ -303,35 +303,32 @@ hr {{ border-color: var(--tedt-border); }}
     )
 
 
-def brand_header() -> None:
-    """Institutional header: TEDT logo and name on one side, the language-matched Ministry logo on the other."""
+@st.cache_data(show_spinner=False)
+def _image_uri(filename: str, mime: str) -> str:
+    """Base64 data URI of an image from assets/branding (empty string if the file is missing)."""
     import base64
-    logo_name = "ministry_logo_ar.png" if lang() == "ar" else "ministry_logo_fr.png"
-    logo_path = __import__("pathlib").Path(__file__).resolve().parent / "assets" / "branding" / logo_name
-    logo_uri = ""
-    if logo_path.exists():
-        logo_uri = "data:image/png;base64," + base64.b64encode(logo_path.read_bytes()).decode("ascii")
-    alt = "وزارة التربية" if lang() == "ar" else "Ministère de l’Éducation"
-    ministry = f'<img class="tedt-ministry-logo" src="{logo_uri}" alt="{alt}" />' if logo_uri else ""
+    path = __import__("pathlib").Path(__file__).resolve().parent / "assets" / "branding" / filename
+    if not path.exists():
+        return ""
+    return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+
+
+def brand_header() -> None:
+    """Institutional header: official TEDT logo (assets/branding/Logo_TEDT.jpeg) on one side,
+    the language-matched Ministry logo on the other."""
+    rtl = lang() == "ar"
+    ministry_uri = _image_uri("ministry_logo_ar.png" if rtl else "ministry_logo_fr.png", "image/png")
+    alt = "وزارة التربية" if rtl else "Ministère de l’Éducation"
+    ministry = f'<img class="tedt-ministry-logo" src="{ministry_uri}" alt="{alt}" />' if ministry_uri else ""
+    tedt_uri = _image_uri("Logo_TEDT.jpeg", "image/jpeg")
+    if tedt_uri:
+        tedt_logo = f'<img class="tedt-logo-img" src="{tedt_uri}" alt="TEDT — Tunisia Education Digital Twin" />'
+    else:  # fallback if the logo file is absent
+        tedt_logo = '<div class="tedt-wordmark">TED<span>T</span></div><div class="tedt-brand-sep"></div><div class="tedt-brand-name">Tunisia Education Digital Twin</div>'
     st.markdown(
         f"""
-<div class="tedt-brand-header" dir="{'rtl' if lang() == 'ar' else 'ltr'}">
-  <div class="tedt-brand-left">
-    <div class="tedt-logo">
-      <svg class="tedt-logo-mark" viewBox="0 0 120 100" role="img" aria-label="TEDT">
-        <path d="M12 10 H48 C78 10 92 27 92 48 C92 68 78 82 53 82 H36 V96 H12 Z M36 31 V61 H51 C63 61 70 56 70 47 C70 38 63 31 51 31 Z" fill="#0D1B2A"/>
-        <path d="M78 67 L103 91 H84 L65 73 Z" fill="#0FA3A3"/>
-        <rect x="42" y="48" width="8" height="20" rx="2" fill="#0FA3A3"/>
-        <rect x="54" y="40" width="8" height="28" rx="2" fill="#20C997"/>
-        <rect x="66" y="32" width="8" height="36" rx="2" fill="#65C7E8"/>
-        <path d="M16 84 C39 82 55 72 76 54" fill="none" stroke="#1B4F72" stroke-width="4" stroke-linecap="round"/>
-        <circle cx="76" cy="54" r="4" fill="#1B4F72"/>
-      </svg>
-      <div class="tedt-wordmark">TED<span>T</span></div>
-    </div>
-    <div class="tedt-brand-sep"></div>
-    <div class="tedt-brand-name">Tunisia Education Digital Twin</div>
-  </div>
+<div class="tedt-brand-header" dir="{'rtl' if rtl else 'ltr'}">
+  <div class="tedt-brand-left">{tedt_logo}</div>
   {ministry}
 </div>
 """,
